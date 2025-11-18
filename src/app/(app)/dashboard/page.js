@@ -12,6 +12,10 @@ import {
   FlaskConical
 } from "lucide-react";
 
+import { db } from "@/lib/firebase"; // Your Firebase config
+import { ref, query, onValue, orderByKey, limitToLast } from "firebase/database";
+import { mapFirebaseToSchema } from "@/lib/mappers"; // Your new mapper function
+
 import ZoneSelector from "@/components/dashboard/ZoneSelector";
 import SensorCard from "@/components/dashboard/SensorCard";
 import PlantHealthWidget from "@/components/dashboard/PlantHealthWidget";
@@ -26,21 +30,67 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const loadDashboardData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { sensorData, plantHealth, alerts, error } = await getDashboardData(selectedZone);
-      if (error) {
-        // Handle the error returned from the server
-        throw new Error(error);
-      }
-      setSensorData(sensorData);
-      setPlantHealth(plantHealth);
-      setAlerts(alerts);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
+    setLoading(true); // We still set loading here
+    try {
+      // 🔽 MODIFIED: sensorData is no longer here
+      const { plantHealth, alerts, error } = await getDashboardData(selectedZone);
+      if (error) {
+        throw new Error(error);
+      }
+      // 🔽 MODIFIED: We no longer set sensorData here
+      setPlantHealth(plantHealth);
+      setAlerts(alerts);
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    }
+    // 🔽 We will set loading to false in the *other* hook
+    // setLoading(false); 
+  }, [selectedZone]);
+
+  // 🔽 --- NEW, CORRECTED VERSION ---
+  useEffect(() => {
+    setLoading(true); // Set loading true when zone changes
+    setSensorData(null); // Clear old sensor data
+
+    // This variable will hold our listener so we can unsubscribe
+    let unsubscribe = () => {};
+
+    // --- THIS IS THE NEW LOGIC ---
+    // Only listen for data if "Zone 1" is selected,
+    // since all root data belongs to Zone 1.
+    if (selectedZone === "Zone 1") {
+      
+      const sensorRef = ref(db, '/field_data');
+      // 2. The query is the same (get the last item from the root)
+      const lastItemQuery = query(sensorRef, orderByKey(), limitToLast(1));
+
+      // 3. Set up the listener
+      unsubscribe = onValue(lastItemQuery, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          // data is { "-OdNq...": { humidity: 98, ... } }
+          const latestReadingData = Object.values(data)[0];
+          // Map it, and hard-code "Zone 1" as the zoneId
+          setSensorData(mapFirebaseToSchema(latestReadingData, "Zone 1"));
+        } else {
+          // No data found at the root
+          setSensorData(null);
+        }
+        setLoading(false); // Set loading to false after data is fetched
+      });
+
+    } else {
+      // If "Zone 2" or "Zone 3" is selected, show no sensor data
+      // and stop loading.
+      setSensorData(null);
+      setLoading(false);
     }
-    setLoading(false);
-  }, [selectedZone]);
+    // --- END OF NEW LOGIC ---
+     // Cleanup: This function is called when the component unmounts
+    // or when 'selectedZone' changes, preventing memory leaks.
+    return () => unsubscribe();
+    
+  }, [selectedZone]); // Re-subscribe if the zone changes
 
   useEffect(() => {
     loadDashboardData();

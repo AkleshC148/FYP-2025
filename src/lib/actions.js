@@ -11,24 +11,87 @@ function serialize(data) {
 }
 
 // --- Dashboard Action ---
-export async function getDashboardData(selectedZone) {
-  try {
-    const [sensorReads, healthRecords, systemAlerts] = await Promise.all([
-      SensorR.filter({ zone_id: selectedZone }, "-created_date", 1),
-      PlantHealthR.filter({ zone_id: selectedZone }, "-created_date", 1),
-      SystemA.filter({ zone_id: selectedZone, resolved: false }, "-created_date", 5)
-    ]);
 
-    return serialize({
-      sensorData: sensorReads[0] || null,
-      plantHealth: healthRecords[0] || null,
-      alerts: systemAlerts
-    });
-  } catch (error) {
-    console.error("Error in getDashboardData:", error);
-    return { error: error.message, sensorData: null, plantHealth: null, alerts: [] };
-  }
+
+// --- HELPER FUNCTION: Fetches latest sensor data from Firebase ---
+// --- HELPER FUNCTION: Fetches latest sensor data from Firebase ---
+async function getFirebaseSensorData(selectedZone) {
+    
+    // --- MODIFICATION ---
+    // This assumes all data at the root belongs to "Zone 1"
+    // and will return nothing for other zones.
+    
+    if (selectedZone !== "Zone 1") {
+        console.log(`Data for ${selectedZone} is not available.`);
+        return null;
+    }
+
+    // We fetch the ROOT of the database, not a specific path.
+    const url = `https://agri-smart-63464-default-rtdb.asia-southeast1.firebasedatabase.app/.json?orderBy="$key"&limitToLast=1`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Firebase fetch failed (${response.status}): ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data) {
+            console.log(`No sensor data found at the root.`);
+            return null;
+        }
+
+        const latestReadingData = Object.values(data)[0];
+        
+        // Map it, but we MUST hard-code "Zone 1" as the zone_id
+        return mapFirebaseToSchema(latestReadingData, "Zone 1");
+
+    } catch (error) {
+        console.error(`Error fetching from Firebase root:`, error.message);
+        return null; 
+    }
 }
+
+
+// --- Dashboard Action (MODIFIED) ---
+export async function getDashboardData(selectedZone) {
+  try {
+    // We REPLACED 'SensorR.filter' with our new 'getFirebaseSensorData'
+    const [healthRecords, systemAlerts] = await Promise.all([
+//       getFirebaseSensorData(selectedZone), // <-- THIS IS THE CHANGE
+      PlantHealthR.filter({ zone_id: selectedZone }, "-created_date", 1),
+      SystemA.filter({ zone_id: selectedZone, resolved: false }, "-created_date", 5)
+    ]);
+
+    return serialize({
+      sensorData: sensorData, // This is now your mapped Firebase data
+      plantHealth: healthRecords[0] || null,
+      alerts: systemAlerts
+    });
+  } catch (error) {
+    console.error("Error in getDashboardData:", error);
+    return { error: error.message, sensorData: null, plantHealth: null, alerts: [] };
+  }
+}
+// export async function getDashboardData(selectedZone) {
+//   try {
+//     const [sensorReads, healthRecords, systemAlerts] = await Promise.all([
+//       SensorR.filter({ zone_id: selectedZone }, "-created_date", 1),
+//       PlantHealthR.filter({ zone_id: selectedZone }, "-created_date", 1),
+//       SystemA.filter({ zone_id: selectedZone, resolved: false }, "-created_date", 5)
+//     ]);
+
+//     return serialize({
+//       sensorData: sensorReads[0] || null,
+//       plantHealth: healthRecords[0] || null,
+//       alerts: systemAlerts
+//     });
+//   } catch (error) {
+//     console.error("Error in getDashboardData:", error);
+//     return { error: error.message, sensorData: null, plantHealth: null, alerts: [] };
+//   }
+// }
 
 // --- Analytics Action ---
 export async function getAnalyticsData(selectedZone, timeRange) {

@@ -129,25 +129,25 @@ export default function ClientLayout({ children }) {
 
             {/* System Status */}
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-green-600 uppercase tracking-wider px-2 py-3">
+              <SidebarGroupLabel className="text-xs font-semibold text-white uppercase tracking-wider px-2 py-3">
                 System Status
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <div className="px-4 py-3 space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-700">System Status</span>
+                    <span className="text-white">System Status</span>
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-green-600 font-medium">Online</span>
+                      <span className="text-blue-300 font-medium">Online</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-700">Active Zones</span>
-                    <span className="text-green-600 font-semibold">3</span>
+                    <span className="text-white">Active Zones</span>
+                    <span className="text-blue-300 font-semibold">1</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-700">Pump Status</span>
-                    <span className="text-blue-600 font-medium">Auto</span>
+                    <span className="text-white">Pump Status</span>
+                    <span className="text-blue-300 font-medium">Auto</span>
                   </div>
                 </div>
               </SidebarGroupContent>
