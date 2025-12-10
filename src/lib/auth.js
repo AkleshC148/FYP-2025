@@ -1,8 +1,10 @@
-// src/lib/auth.js
 import { cookies } from 'next/headers';
 
-export function setAuthCookie(token) {
-  cookies().set('token', token, {
+// NOTE: We don't usually use this set function in Route Handlers anymore.
+// We set headers manually in the response (like we did in verify-otp).
+export async function setAuthCookie(token) {
+  const cookieStore = await cookies();
+  cookieStore.set('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     maxAge: 7 * 24 * 60 * 60, // 7 days
@@ -11,12 +13,16 @@ export function setAuthCookie(token) {
   });
 }
 
-export function getAuthCookie() {
-  return cookies().get('token')?.value;
+// CRITICAL FIX: Added 'async' and 'await'
+export async function getAuthCookie() {
+  const cookieStore = await cookies(); 
+  const token = cookieStore.get('token');
+  return token?.value;
 }
 
-export function clearAuthCookie() {
-  cookies().set('token', '', {
+export async function clearAuthCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set('token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     maxAge: 0,

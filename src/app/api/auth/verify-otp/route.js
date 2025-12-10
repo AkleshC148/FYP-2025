@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb'; // Use your existing DB connection file
+import jwt from 'jsonwebtoken';
+import { serialize } from 'cookie';
+import dbConnect from '@/lib/mongodb';
 import Otp from '@/models/OtpSchema';
+import User from '@/models/UserSchema'; // Needed to update user status
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
 
 export async function POST(req) {
   try {
@@ -12,12 +17,10 @@ export async function POST(req) {
 
     await dbConnect();
 
-    // 1. Find the record
+    // 1. Find the OTP record
     const record = await Otp.findOne({ email });
 
-    // 2. Check scenarios
     if (!record) {
-      // If null, the TTL index likely deleted it because it expired
       return NextResponse.json({ message: 'OTP expired or does not exist. Request a new one.' }, { status: 400 });
     }
 
@@ -25,13 +28,48 @@ export async function POST(req) {
       return NextResponse.json({ message: 'Invalid OTP' }, { status: 400 });
     }
 
-    // 3. OTP Matches
-    // Note: We DO NOT delete the OTP here yet.
-    // Why? The user might verify the OTP but fail the rest of the signup form (e.g., bad password).
-    // If we delete it now, they have to request a new one just to fix a typo in their username.
-    // We let the TTL (5 mins) handle the cleanup naturally.
+    // --- NEW: Update User & Auto-Login (Matches PDF Flow) ---
 
-    return NextResponse.json({ message: 'Verification successful' }, { status: 200 });
+    // 2. Mark User as Verified
+    const user = await User.findOneAndUpdate(
+      { email },
+      { isVerified: true },
+      { new: true }
+    );
+
+    if (!user) {
+      return NextResponse.json({ message: 'User record not found' }, { status: 404 });
+    }
+
+    // 3. Generate Access Token (JWT)
+    const accessToken = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    // 4. Set HTTP-Only Cookie
+    const cookieSerialized = serialize('token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, // 1 day
+      path: '/',
+    });
+
+    // 5. Delete the used OTP (Security Best Practice)
+    await Otp.deleteOne({ email });
+
+    // 6. Return Response with Cookie
+    const response = NextResponse.json({
+      message: 'Verification successful',
+      user: { name: user.name, email: user.email, role: user.role }
+    }, { status: 200 });
+
+    response.headers.set('Set-Cookie', cookieSerialized);
+
+    return response;
+    // -------------------------------------------------------
 
   } catch (error) {
     console.error('Error verifying OTP:', error);

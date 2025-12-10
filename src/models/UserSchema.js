@@ -1,8 +1,5 @@
 import mongoose from 'mongoose';
 
-// We define a schema for our user.
-// The user's original db.js stored users as an object with email as key.
-// In MongoDB, we'll store them as documents in a collection.
 const UserSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -17,15 +14,21 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: true, // This will store the bcrypt hash
+  },
+  role: {
+    type: String,
+    default: 'farmer', // Default role if none is provided
+  },
+  isVerified: {
+    type: Boolean,
+    default: false, // Crucial: Users start as unverified until OTP check
   },
   createdAt: {
     type: Date,
     default: Date.now,
   },
-  // Add any other fields from your original userData object here
-  // e.g., role: String,
 });
 
-// This pattern prevents Mongoose from recompiling the model on hot-reloads
+// Prevent recompilation error in Next.js
 export default mongoose.models.User || mongoose.model('User', UserSchema);

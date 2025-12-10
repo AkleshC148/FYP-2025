@@ -88,7 +88,8 @@ export default function AuthForm({ type }) {
 
         // Show success message and redirect to login
         alert('User created successfully. Please log in to continue.');
-        router.push('/login'); // ← Redirect to login page after signup
+        // router.push('/login');
+        router.push(`/signup/otp?email=${encodeURIComponent(email)}`); // ← Redirect to login page after signup
         }
     } catch (err) {
         setError(err.message);
@@ -174,7 +175,7 @@ export default function AuthForm({ type }) {
             />
           </div>
 
-          {type=='signup' && <button
+          {/* {type=='signup' && <button
             onClick={verifyOTP}
             disabled={isOtpLogin}
             className="w-20% hover:bg-green-700 hover:text-white text-green-700 border border-green-500 py-1 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -190,10 +191,10 @@ export default function AuthForm({ type }) {
             ) : (
               'Verify Email'
             )}
-          </button> } 
+          </button> }  */}
         
 
-        {type=='signup' && verifyButtonClicked && <div>
+        {/* {type=='signup' && verifyButtonClicked && <div>
             <div htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Enter OTP
             </div>
@@ -206,7 +207,7 @@ export default function AuthForm({ type }) {
               placeholder="****"
               required
             />
-          </div>}
+          </div>} */}
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">

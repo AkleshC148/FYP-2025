@@ -1,42 +1,40 @@
-// src/app/api/auth/login/route.js
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { setAuthCookie } from '@/lib/auth';
-import { findUserByEmail } from '@/lib/userDB';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
+import bcrypt from 'bcryptjs'; // <--- Security Update
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/UserSchema';
+import { generateAndSendOtp } from '@/lib/otpService'; // <--- Use your helper
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
 
-    // Find user in JSON file
-    const user = await findUserByEmail(email);
+    await dbConnect();
+
+    // 1. Find User (Directly via Mongoose to ensure we get the password field)
+    const user = await User.findOne({ email });
     
-    if (!user || user.password !== password) {
+    if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Create JWT token
-    const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // 2. Secure Password Check
+    // We use bcrypt to compare the input with the hashed password in DB
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    // Set cookie
-    setAuthCookie(token);
+    if (!isMatch) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
 
-    // Return user data (without password)
+    // 3. STOP! Do not generate a token yet.
+    // Instead, generate and send the 2FA OTP.
+    await generateAndSendOtp(email);
+
+    // 4. Tell Frontend to redirect to the OTP Entry page
     return NextResponse.json({ 
-      message: 'Login successful',
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        name: user.name, 
-        role: user.role 
-      }
-    });
+      message: 'Credentials verified. OTP sent to email.',
+      requireOtp: true // A flag for your frontend to know what to do
+    }, { status: 200 });
+
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });
