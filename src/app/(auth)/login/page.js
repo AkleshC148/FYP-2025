@@ -9,7 +9,6 @@ export default function LoginPage() {
         <h1 className="text-4xl font-bold text-green-800 mb-2">Agri-Smart</h1>
         <p className="text-gray-600"></p>
       </div> */}
-      
       <AuthForm type="login" className="mt-5 text-center mx-auto"/>
       <div className="mt-7 text-center text-gray-600">
       Forgot Password?

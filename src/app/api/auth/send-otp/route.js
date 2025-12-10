@@ -6,17 +6,14 @@ import Otp from '@/models/OtpSchema';
 
 export async function POST(req) {
   try {
-    // 1. Parse Request
     const { email } = await req.json();
 
     if (!email) {
       return NextResponse.json({ message: 'Email is required' }, { status: 400 });
     }
 
-    // 2. Connect to DB
     await dbConnect();
 
-    // 3. Generate a secure 6-digit OTP
     const otpValue = crypto.randomInt(100000, 999999).toString();
 
     // 4. Save to MongoDB
