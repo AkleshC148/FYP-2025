@@ -30,7 +30,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sideBar";
 
-// import { User } from "@/utils/User";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,17 +74,18 @@ export default function ClientLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  // const handleLogout = async () => {
-  //   await User.logout();
-  //   router.refresh(); // refreshes the current route (like navigate(0))
-  // };
-
+  console.log("Authenticated user in ClientLayout:", user);
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-green-50 to-blue-50">
-        {/* Sidebar */}
-        <Sidebar className="border-r border-green-100">
-          <SidebarHeader className="border-b border-green-100 p-6 bg-gradient-to-r from-green-600 to-green-700">
+        {/* UPDATE 1: Sidebar
+            Added 'h-screen' to make it full viewport height.
+            Added 'sticky top-0' so it stays pinned while main content scrolls.
+            Added 'flex flex-col' to organize children vertically.
+        */}
+        <Sidebar className="border-r border-green-100 h-screen sticky top-0 flex flex-col">
+          
+          <SidebarHeader className="border-b border-green-100 p-6 bg-gradient-to-r from-green-600 to-green-700 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
                 <Leaf className="w-6 h-6 text-white" />
@@ -97,7 +97,11 @@ export default function ClientLayout({ children }) {
             </div>
           </SidebarHeader>
           
-          <SidebarContent className="p-2 bg-green-900 backdrop-blur flex-1">
+          {/* UPDATE 2: SidebarContent
+             'flex-1' makes it expand to fill all empty space.
+             'overflow-y-auto' enables scrolling ONLY within this section.
+          */}
+          <SidebarContent className="p-2 bg-green-900 backdrop-blur flex-1 overflow-y-auto">
             {/* Monitoring */}
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-semibold text-green-600 uppercase tracking-wider px-2 py-3">
@@ -154,17 +158,20 @@ export default function ClientLayout({ children }) {
             </SidebarGroup>
           </SidebarContent>
 
-          {/* Footer */}
-          <SidebarFooter className="border-t border-green-100 p-6 dark:bg-white rounded-xs">
+          {/* UPDATE 3: SidebarFooter
+             Added 'shrink-0' to ensure it never gets squashed.
+             It sits outside the scrollable SidebarContent, so it remains fixed.
+          */}
+          <SidebarFooter className="border-t border-green-100 p-6 dark:bg-white rounded-xs shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer hover:bg-green-100/50 p-2 -m-2 rounded-lg transition-colors">
+                <div className="flex items-center gap-3 cursor-pointer hover:bg-green-100/50 -m-2 rounded-lg transition-colors">
                   <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">F</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-gray-600">Farmer User</p>
-                    <p className="text-xs text-gray-600">Field Manager</p>
+                    <p className="font-semibold text-sm text-gray-600">{user?.name}</p>
+                    <p className="text-xs text-gray-600">{user?.role}</p>
                   </div>
                 </div>
               </DropdownMenuTrigger>
@@ -179,7 +186,7 @@ export default function ClientLayout({ children }) {
         </Sidebar>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col h-screen overflow-hidden">
           <header className="bg-white/70 backdrop-blur border-b border-green-100 px-6 py-4 md:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hover:bg-green-100 p-2 rounded-lg transition-colors duration-200" />
@@ -187,11 +194,11 @@ export default function ClientLayout({ children }) {
             </div>
           </header>
 
+          {/* This allows the main page content to scroll independently of the sidebar */}
           <div className="flex-1 overflow-auto">{children}</div>
         </main>
       </div>
 
-      {/* Custom Theme Variables */}
       <style>
         {`
           :root {

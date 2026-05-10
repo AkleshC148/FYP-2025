@@ -3,9 +3,11 @@ import jwt from 'jsonwebtoken';
 import { serialize } from 'cookie';
 import dbConnect from '@/lib/mongodb';
 import Otp from '@/models/OtpSchema';
-import User from '@/models/UserSchema'; // Needed to update user status
+import User from '@/models/UserSchema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key';
+const TOKEN_NAME = 'token';
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
 
 export async function POST(req) {
   try {
@@ -17,62 +19,52 @@ export async function POST(req) {
 
     await dbConnect();
 
-    // 1. Find the OTP record
+    // 1. Verify OTP
     const record = await Otp.findOne({ email });
-
-    if (!record) {
-      return NextResponse.json({ message: 'OTP expired or does not exist. Request a new one.' }, { status: 400 });
+    if (!record || record.otp !== otp) {
+      return NextResponse.json({ message: 'Invalid or expired OTP' }, { status: 400 });
     }
-
-    if (record.otp !== otp) {
-      return NextResponse.json({ message: 'Invalid OTP' }, { status: 400 });
-    }
-
-    // --- NEW: Update User & Auto-Login (Matches PDF Flow) ---
 
     // 2. Mark User as Verified
+    // This handles both "Initial Signup Verification" AND "Login 2FA"
     const user = await User.findOneAndUpdate(
       { email },
-      { isVerified: true },
+      { isVerified: true }, // Always ensure it's true after a successful OTP check
       { new: true }
     );
 
     if (!user) {
-      return NextResponse.json({ message: 'User record not found' }, { status: 404 });
+      return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    // 3. Generate Access Token (JWT)
+    // 3. Generate JWT (Log them in immediately)
     const accessToken = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
+      { email: user.email, role: user.role, id: user._id },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: TOKEN_MAX_AGE }
     );
 
-    // 4. Set HTTP-Only Cookie
-    const cookieSerialized = serialize('token', accessToken, {
+    const cookieSerialized = serialize(TOKEN_NAME, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 1 day
+      sameSite: 'lax',
+      maxAge: TOKEN_MAX_AGE,
       path: '/',
     });
 
-    // 5. Delete the used OTP (Security Best Practice)
+    // 4. Cleanup OTP
     await Otp.deleteOne({ email });
 
-    // 6. Return Response with Cookie
     const response = NextResponse.json({
       message: 'Verification successful',
-      user: { name: user.name, email: user.email, role: user.role }
-    }, { status: 200 });
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    });
 
     response.headers.set('Set-Cookie', cookieSerialized);
-
     return response;
-    // -------------------------------------------------------
 
   } catch (error) {
-    console.error('Error verifying OTP:', error);
+    console.error('OTP verification error:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

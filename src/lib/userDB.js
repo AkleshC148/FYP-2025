@@ -20,17 +20,9 @@ export async function findUserByEmail(email) {
   }
 }
 
-/**
- * Creates a new user or updates an existing one.
- * @param {object} userData - The user data to create or update.
- * @returns {Promise<object|null>} The created/updated user object, or null on error.
- */
 export async function createUser(userData) {
   try {
     await connectToDatabase();
-    // This finds a document by email and updates it,
-    // or creates a new one if it doesn't exist (upsert: true).
-    // { new: true } returns the new, updated document.
     const user = await User.findOneAndUpdate(
       { email: userData.email },
       userData,
@@ -42,6 +34,3 @@ export async function createUser(userData) {
     return null;
   }
 }
-
-// The old file-based getUsers() and saveUsers() are no longer needed,
-// as Mongoose handles data persistence per operation.

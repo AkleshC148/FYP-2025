@@ -4,10 +4,7 @@ import nodemailer from 'nodemailer';
 import Otp from '@/models/OtpSchema';
 
 export async function generateAndSendOtp(email) {
-  // 1. Generate OTP
   const otpValue = crypto.randomInt(100000, 999999).toString();
-
-  // 2. Save to DB
   await Otp.findOneAndUpdate(
     { email },
     { otp: otpValue, createdAt: new Date() },

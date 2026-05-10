@@ -30,22 +30,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const loadDashboardData = useCallback(async () => {
-    setLoading(true); // We still set loading here
-    try {
-      // 🔽 MODIFIED: sensorData is no longer here
-      const { plantHealth, alerts, error } = await getDashboardData(selectedZone);
-      if (error) {
-        throw new Error(error);
-      }
-      // 🔽 MODIFIED: We no longer set sensorData here
-      setPlantHealth(plantHealth);
-      setAlerts(alerts);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-    }
-    // 🔽 We will set loading to false in the *other* hook
-    // setLoading(false); 
-  }, [selectedZone]);
+  setLoading(true);
+    try {
+      const { plantHealth, alerts, error } = await getDashboardData(selectedZone);
+      if (error) {
+        throw new Error(error);
+      }
+      setPlantHealth(plantHealth);
+      setAlerts(alerts);
+    } catch (error) {
+       console.error("Error loading dashboard data:", error);
+    }
+  }, [selectedZone]);
 
   // 🔽 --- NEW, CORRECTED VERSION ---
   useEffect(() => {
@@ -59,7 +55,7 @@ export default function Dashboard() {
     // Only listen for data if "Zone 1" is selected,
     // since all root data belongs to Zone 1.
     if (selectedZone === "Zone 1") {
-      
+
       const sensorRef = ref(db, '/field_data');
       // 2. The query is the same (get the last item from the root)
       const lastItemQuery = query(sensorRef, orderByKey(), limitToLast(1));
@@ -80,17 +76,12 @@ export default function Dashboard() {
       });
 
     } else {
-      // If "Zone 2" or "Zone 3" is selected, show no sensor data
-      // and stop loading.
       setSensorData(null);
       setLoading(false);
     }
-    // --- END OF NEW LOGIC ---
-     // Cleanup: This function is called when the component unmounts
-    // or when 'selectedZone' changes, preventing memory leaks.
     return () => unsubscribe();
     
-  }, [selectedZone]); // Re-subscribe if the zone changes
+  }, [selectedZone]);
 
   useEffect(() => {
     loadDashboardData();

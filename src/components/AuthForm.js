@@ -1,102 +1,68 @@
-// src/components/AuthForm.jsx
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 
 export default function AuthForm({ type }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('farmer');
+  const [role, setRole] = useState('farmer'); 
   const [error, setError] = useState('');
-  const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [verifyButtonClicked, setVerifyButtonClicked] = useState(false);
-  const [isOtpLogin, setIsOtpLogin] = useState(false);
-
-
   
-  
-  const { login, signup } = useAuth();
   const router = useRouter();
 
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     setError('');
-//     setIsLoading(true);
-
-//     try {
-//       if (type === 'login') {
-//         await login(email, password);
-//       } else {
-//         await signup(email, password, name, role);
-//       }
-      
-//       router.push('/dashboard');
-//     } catch (err) {
-//         setError('An unexpected error occurred');
-//     //  setError(err.message);
-//         console.log(err);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-   // In your AuthForm.jsx component
-
-  const verifyOTP = async (e) => {
-    e.preventDefault();
-    setIsOtpLogin(true);
-    setError('');
-    setVerifyButtonClicked(true);
-    setIsOtpLogin(false);
-
-    // try {
-    //   const response = await fetch('/api/auth/send-otp', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ email })
-    //   });
-    //   // You can handle the response here if needed
-    // } catch (err) {
-    //   setError('Failed to send OTP');
-    //   console.log(err);
-    // }
-  }
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-        if (type === 'login') {
-        await login(email, password);
-        router.push('/dashboard'); // Redirect to dashboard after login
-        } else {
-        // For signup
-        const response = await fetch('/api/auth/signup', {
+      if (type === 'login') {
+        // --- LOGIN FLOW ---
+        const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name, role })
+            body: JSON.stringify({ email, password })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Signup failed');
+            throw new Error(data.error || 'Login failed');
         }
 
-        // Show success message and redirect to login
-        alert('User created successfully. Please log in to continue.');
-        // router.push('/login');
-        router.push(`/signup/otp?email=${encodeURIComponent(email)}`); // ← Redirect to login page after signup
+        if (data.requireOtp) {
+            // Pass mode='login'
+            router.push(`/signup/otp?email=${encodeURIComponent(email)}&mode=login`);
+        } else {
+            router.push('/dashboard');
         }
+
+      } else {
+        // --- SIGNUP FLOW ---
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name, role })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        // Pass mode='signup'
+        router.push(`/signup/otp?email=${encodeURIComponent(email)}&mode=signup`);
+      }
     } catch (err) {
-        setError(err.message);
+      setError(err.message);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-    };
+  };
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -140,23 +106,6 @@ export default function AuthForm({ type }) {
                   required
                 />
               </div>
-              
-              {/* <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                  I am a
-                </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-3 border dark:text-gray-700 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-                >
-                  <option value="buyer">Buyer</option>
-                  <option value="seller">Seller</option>
-                  <option value="transporter">Transporter</option>
-                  <option value="warehouse_manager">Warehouse Manager</option>
-                </select>
-              </div> */}
             </>
           )}
 
@@ -174,40 +123,6 @@ export default function AuthForm({ type }) {
               required
             />
           </div>
-
-          {/* {type=='signup' && <button
-            onClick={verifyOTP}
-            disabled={isOtpLogin}
-            className="w-20% hover:bg-green-700 hover:text-white text-green-700 border border-green-500 py-1 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isOtpLogin ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              'Verify Email'
-            )}
-          </button> }  */}
-        
-
-        {/* {type=='signup' && verifyButtonClicked && <div>
-            <div htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Enter OTP
-            </div>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setOtp(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 dark:text-gray-700 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
-              placeholder="****"
-              required
-            />
-          </div>} */}
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
